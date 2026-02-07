@@ -1,12 +1,24 @@
 // TestVideoPage.jsx
 import React, { useState, useRef } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const models = [
-  { key: 'i3d_two_streams', label: 'I3D Two-Streams' },
-  { key: 'i3d', label: 'I3D' },
-  { key: 'cnn_lstm', label: 'CNN-LSTM' },
+  { 
+    key: 'i3d_two_streams', 
+    label: 'I3D Two-Streams',
+    description: 'Modèle avancé analysant à la fois les apparences spatiales et le flux optique pour une détection précise de violence dans les vidéos.'
+  },
+  { 
+    key: 'i3d', 
+    label: 'I3D',
+    description: 'Version classique analysant les volumes 3D pour détecter les comportements violents dans les séquences vidéo.'
+  },
+  { 
+    key: 'cnn_lstm', 
+    label: 'CNN-LSTM',
+    description: 'Combine réseaux de neurones convolutifs et mémoires à long terme pour analyser les séquences temporelles de violence.'
+  },
 ];
 
 function TestVideoPage() {
@@ -17,8 +29,10 @@ function TestVideoPage() {
   const [videoURL, setVideoURL] = useState('');
   const [filename, setFilename] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState(null);
   const [annotatedVideoPath, setAnnotatedVideoPath] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
 
   const handleCardClick = (model) => {
     setSelectedModel(model);
@@ -29,8 +43,9 @@ function TestVideoPage() {
     setFile(null);
     setVideoURL('');
     setFilename('');
-    setResults([]);
+    setResults(null);
     setAnnotatedVideoPath('');
+    setDownloadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -40,8 +55,9 @@ function TestVideoPage() {
       setFile(vid);
       setVideoURL(URL.createObjectURL(vid));
       setFilename(vid.name);
-      setResults([]);
+      setResults(null);
       setAnnotatedVideoPath('');
+      setDownloadProgress(0);
     }
   };
 
@@ -57,31 +73,142 @@ function TestVideoPage() {
         body: formData,
       });
       const data = await res.json();
-      let out = [];
+      
+      let predictions = [];
       if (selectedModel === 'i3d_two_streams') {
-        out = Array.isArray(data.predictions) ? data.predictions : [];
+        if (Array.isArray(data.predictions)) {
+          predictions = data.predictions.map(pred => {
+            const match = pred.match(/\[(.*?)\]\s+score\s*:\s*([\d.]+)\s+Etat\s*:\s*(.*)/i);
+            return match ? {
+              interval: match[1],
+              score: (parseFloat(match[2]) * 100).toFixed(1),
+              state: match[3].trim()
+            } : null;
+          }).filter(Boolean);
+        }
         if (data.annotated_video_path) {
-          setAnnotatedVideoPath(`http://localhost:8000/static/${data.annotated_video_path.split('/').pop()}`);
-        } else {
-          setAnnotatedVideoPath('');
+          setAnnotatedVideoPath(`http://localhost:8000${data.annotated_video_path}`);
         }
       } else {
-        const { filename: name, probability, is_violent } = data;
-        out = [
-          `Nom du fichier: ${name}`,
-          `Probabilité: ${(probability * 100).toFixed(1)} %`,
-          is_violent ? 'Violence détectée' : 'Aucune violence détectée',
-        ];
-        setAnnotatedVideoPath('');
+        predictions = [{
+          score: (data.probability * 100).toFixed(1),
+          state: data.is_violent ? 'Violence détectée' : 'Aucune violence'
+        }];
       }
-      setResults(out);
+      
+      setResults({
+        filename: filename,
+        predictions: predictions,
+        model: selectedModel
+      });
+      
+      if (selectedModel !== 'i3d_two_streams') setAnnotatedVideoPath('');
     } catch (err) {
       console.error(err);
-      setResults(['Une erreur est survenue lors de l\'analyse.']);
+      setResults({
+        filename: filename,
+        error: 'Une erreur est survenue lors de l\'analyse.'
+      });
       setAnnotatedVideoPath('');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Téléchargement avec progression
+  async function downloadAnnotatedVideo() {
+    try {
+      setDownloadProgress(0);
+      const resp = await fetch(annotatedVideoPath);
+      if (!resp.ok) throw new Error('Erreur réseau');
+      const contentLength = resp.headers.get('Content-Length');
+      const total = contentLength ? parseInt(contentLength, 10) : null;
+      const reader = resp.body.getReader();
+      let received = 0;
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        if (total) {
+          setDownloadProgress((received / total) * 100);
+        }
+      }
+      const blob = new Blob(chunks, { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const parts = annotatedVideoPath.split('/');
+      const filename = parts[parts.length - 1];
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setDownloadProgress(100);
+    } catch (err) {
+      console.error('Erreur téléchargement', err);
+      setDownloadProgress(0);
+    }
+  }
+
+  const renderResults = () => {
+    if (!results) return null;
+    
+    return (
+      <div className="mt-4 bg-white/5 backdrop-blur-md p-6 rounded-xl shadow-xl border border-gray-600/30 animate-fade-in">
+        <h4 className="text-2xl font-extrabold mb-4 text-white">Résultats :</h4>
+        <div className="text-lg font-medium text-blue-300 mb-4">
+          Nom fichier: {results.filename}
+        </div>
+        
+        {results.error ? (
+          <div className="text-lg font-medium text-white">
+            {results.error}
+          </div>
+        ) : (
+          <div className="bg-white/5 p-4 rounded-lg">
+            {results.model === 'i3d_two_streams' ? (
+              <div className="space-y-4">
+                <h5 className="text-lg font-semibold text-blue-300">Intervalles analysés:</h5>
+                <div className="grid grid-cols-3 gap-2 mb-2 font-medium text-blue-300">
+                  <span>Intervalle</span>
+                  <span className="text-center">Score</span>
+                  <span className="text-right">État</span>
+                </div>
+                {results.predictions.map((pred, idx) => (
+                  <div key={idx} className="grid grid-cols-3 gap-2 items-center">
+                    <span>{pred.interval}</span>
+                    <span className="text-center">{pred.score}%</span>
+                    <span className={`text-right font-bold ${
+                      pred.state.includes('Violence') ? 'text-red-400' : 'text-green-400'
+                    }`}>
+                      {pred.state}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-blue-300">Score:</span>
+                  <span>{results.predictions[0].score}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-300">État:</span>
+                  <span className={`font-bold ${
+                    results.predictions[0].state.includes('Violence') ? 'text-red-400' : 'text-green-400'
+                  }`}>
+                    {results.predictions[0].state}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -94,19 +221,49 @@ function TestVideoPage() {
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900/60 to-gray-900/40 backdrop-blur-sm" />
 
       <div className="relative z-10 flex flex-col min-h-screen p-6">
-        <h1 className="text-3xl font-bold text-center text-white mb-8">Tester une Vidéo</h1>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white">Tester une Vidéo</h1>
+          <p className="text-gray-300 mt-2 mx-auto max-w-2xl">
+            Analysez vos vidéos pour détecter automatiquement les comportements violents 
+            en sélectionnant l'un de nos modèles spécialisés ci-dessous.
+          </p>
+          <div className="relative inline-block mt-4">
+            <button 
+              onMouseEnter={() => setShowHelp(true)}
+              onMouseLeave={() => setShowHelp(false)}
+              className="text-gray-400 hover:text-blue-400 transition"
+            >
+              <HelpCircle size={24} />
+            </button>
+            {showHelp && (
+              <div className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-64 bg-gray-800 p-4 rounded-lg shadow-xl z-50">
+                <p className="text-sm text-white">
+                  Cette page permet d'analyser des vidéos pour détecter des scènes de violence.
+                  Sélectionnez un modèle, chargez une vidéo et cliquez sur "Analyser".
+                  Les résultats apparaîtront avec les scores de détection.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
 
         {!selectedModel ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {models.map((m) => (
-              <div
-                key={m.key}
-                className="bg-white/5 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-gray-600/30 cursor-pointer hover:scale-105 transition-all"
-                onClick={() => handleCardClick(m.key)}
-              >
-                <h3 className="text-xl font-semibold text-blue-300 text-center">{m.label}</h3>
-              </div>
-            ))}
+          <div className="flex flex-col items-center justify-center flex-grow">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-5xl w-full">
+              {models.map((m) => (
+                <div
+                  key={m.key}
+                  className="bg-white/5 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-gray-600/30 cursor-pointer hover:scale-105 transition-all flex flex-col items-center text-center h-full"
+                  onClick={() => handleCardClick(m.key)}
+                >
+                  <div className="bg-blue-900/30 rounded-full p-4 mb-4">
+                    <span className="text-xl font-semibold">{m.label.charAt(0)}</span>
+                  </div>
+                  <h3 className="text-xl font-semibold text-blue-300 mb-2">{m.label}</h3>
+                  <p className="text-gray-300 text-sm flex-grow">{m.description}</p>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="max-w-4xl mx-auto w-full space-y-6">
@@ -164,42 +321,23 @@ function TestVideoPage() {
                 </button>
               )}
 
-              {results.length > 0 && (
-                <div className="mt-4 bg-white/5 backdrop-blur-md p-6 rounded-xl shadow-xl border border-gray-600/30 animate-fade-in">
-                  <h4 className="text-2xl font-extrabold mb-4 text-white">Résultats :</h4>
-                  <ul className="space-y-4">
-                    {selectedModel === 'i3d_two_streams'
-                      ? results.map((line, idx) => {
-                          const match = line.match(/\[(.*?)\]\s+score\s*:\s*([\d.]+)\s+Etat\s*:\s*(.*)/i);
-                          if (!match) return null;
-                          const interval = match[1];
-                          const rawScore = parseFloat(match[2]);
-                          const score = `${(rawScore * 100).toFixed(1)} %`;
-                          const state = match[3].trim();
-                          return (
-                            <li key={idx} className="flex justify-between items-center text-lg font-medium text-white border-b border-white/10 pb-2">
-                              <span className="text-blue-300">[{interval}]</span>
-                              <span>{score}</span>
-                              <span className={`font-bold ${state.includes('Violence') ? 'text-red-400' : 'text-green-400'}`}>{state}</span>
-                            </li>
-                          );
-                        })
-                      : results.map((line, idx) => (
-                          <li key={idx} className="text-lg font-medium text-white border-b border-white/10 pb-2">
-                            {line}
-                          </li>
-                        ))}
-                  </ul>
-                </div>
-              )}
+              {renderResults()}
 
               {annotatedVideoPath && (
-                <button
-                  onClick={() => window.open(annotatedVideoPath, '_blank')}
-                  className="mt-6 w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl transition font-bold"
-                >
-                  Voir mes cams
-                </button>
+                <div className="mt-6 space-y-2">
+                  <button
+                    onClick={downloadAnnotatedVideo}
+                    disabled={downloadProgress > 0 && downloadProgress < 100}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl transition font-bold text-center disabled:opacity-50"
+                  >
+                    {downloadProgress > 0 && downloadProgress < 100
+                      ? `Téléchargement : ${downloadProgress.toFixed(0)}%`
+                      : '📥 Télécharger la vidéo annotée'}
+                  </button>
+                  <p className="text-sm text-gray-300 text-center italic">
+                    Ouvrez le fichier téléchargé pour le lire dans votre lecteur vidéo (VLC, etc.)
+                  </p>
+                </div>
               )}
             </div>
           </div>

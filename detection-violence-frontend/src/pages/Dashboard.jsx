@@ -50,12 +50,12 @@ const Dashboard = () => {
 };
 
 const dashboardItems = [
-  { to: "/cameras", title: "Voir toutes les caméras", subtitle: "Accéder aux flux en direct", icon: Camera },
-  { to: "/test-video", title: "Tester une vidéo", subtitle: "Analyser un fichier vidéo", icon: Video },
-  { to: "/notifications", title: "Notifications", subtitle: "Voir les derniers messages", icon: Bell },
+  { to: "/cameras", title: "Tester video en direct ", subtitle: "Comparer les performances des modéles L' IA sur des flux vidéo en direct ", icon: Camera },
+  { to: "/test-video", title: "Tester une vidéo enregistrée ", subtitle: "Comparer les performances des modéles L' IA sur des vidéo enregistrée ", icon: Video },
+  { to: "/notifications", title: "Recherche et filtrage ", subtitle: "Rechercher et affiner les resultats selon vos critères ", icon: Bell },
   { to: "/alerts", title: "Alertes", subtitle: "Afficher les événements détectés", icon: AlertTriangle },
-  { to: "/history", title: "Historique", subtitle: "Consulter les activités passées", icon: History },
-  { to: "/settings", title: "Paramètres", subtitle: "Gérer les utilisateurs", icon: Settings },
+  { to: "/history", title: "Stockage et Sauvgarde ", subtitle: "Archiver les vidéos pour un accés au long terme ", icon: History },
+  { to: "/settings", title: "Paramètres", subtitle: "Superviser la gestion des utilisateurs", icon: Settings },
 ];
 
 const DashboardCard = ({ to, title, subtitle, Icon }) => (

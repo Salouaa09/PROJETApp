@@ -1,88 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React from "react";
+import { useAlerts } from'../components/notifications/AlertContext';
 
 const CarteAlerte = () => {
-  const [alerts, setAlerts] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('desc');
-
-  useEffect(() => {
-    fetchAlerts();
-  }, []);
-
-  const fetchAlerts = async () => {
-    try {
-      const response = await axios.get('http://localhost:8000/alerts');
-      setAlerts(response.data);
-    } catch (error) {
-      console.error('Erreur de chargement des alertes :', error);
-    }
-  };
-
-  const filteredAlerts = alerts
-    .filter((alert) =>
-      alert.cameraName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      alert.violenceType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      alert.dateTime.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortOrder === 'asc') {
-        return new Date(a.dateTime) - new Date(b.dateTime);
-      } else {
-        return new Date(b.dateTime) - new Date(a.dateTime);
-      }
-    });
+  const { alerts } = useAlerts();
 
   return (
-    <div className="w-full min-h-screen bg-[#0f172a] p-8 text-white">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">📋 Carte des Alertes</h1>
-        <button
-          onClick={() => window.location.href = '/dashboard'}
-          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold"
-        >
-          Retour au Dashboard
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-900 text-white p-6 font-sans">
+      <h2 className="text-2xl font-bold mb-6">Historique des alertes de violence</h2>
+      {alerts.length === 0 && (
+        <p className="text-gray-400">Aucune alerte détectée pour l'instant.</p>
+      )}
 
-      <div className="flex justify-between items-center mb-6">
-        <input
-          type="text"
-          placeholder="Recherche par caméra, type, date..."
-          className="bg-[#1e293b] p-2 rounded-lg w-1/2 border border-gray-600"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value)}
-          className="bg-[#1e293b] p-2 rounded-lg border border-gray-600"
-        >
-          <option value="desc">Plus récent</option>
-          <option value="asc">Plus ancien</option>
-        </select>
-      </div>
-
-      <table className="w-full table-auto border-collapse">
-        <thead>
-          <tr className="bg-blue-900">
-            <th className="p-2">Date/Heure</th>
-            <th className="p-2">Caméra</th>
-            <th className="p-2">Type</th>
-            <th className="p-2">Confiance (%)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredAlerts.map((alert, idx) => (
-            <tr key={idx} className="border-t border-blue-800 hover:bg-blue-800/30">
-              <td className="p-2">{alert.dateTime}</td>
-              <td className="p-2">{alert.cameraName}</td>
-              <td className="p-2">{alert.violenceType}</td>
-              <td className="p-2">{alert.confidenceScore}%</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ul className="space-y-4 max-w-3xl mx-auto">
+        {alerts.map(({ id, date, camera, score, message }) => (
+          <li
+            key={id}
+            className="flex items-center justify-between bg-gray-800 rounded-lg p-4 shadow-md"
+          >
+            <div>
+              <p className="font-semibold">{message}</p>
+              <p className="text-sm text-gray-300">
+                {camera} — {date.toLocaleDateString()} {date.toLocaleTimeString()}
+              </p>
+            </div>
+            <div className="px-3 py-1 rounded-full bg-red-600 font-bold text-white text-sm">
+              {`Score: ${(score * 100).toFixed(2)}%`}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
