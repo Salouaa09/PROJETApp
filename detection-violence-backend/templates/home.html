@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système de Détection de Violence</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background-color: #b09fc8; /* Couleur d'arrière-plan de secours */
+            background-image: url('/static/logo.png'); /* Chemin corrigé */
+            background-size: cover; /* Ajuste la taille de l'image pour couvrir toute la page */
+            background-position: center; /* Centre l'image */
+            background-repeat: no-repeat; /* Empêche la répétition de l'image */
+            color: #fff; /* Couleur du texte */
+            display: flex;
+            flex-direction: column; /* Disposition en colonne */
+            justify-content: center; /* Centre le contenu principal */
+            align-items: center; /* Centre horizontalement */
+            text-align: center; /* Centre le texte */
+        }
+   
+        .container {
+            max-width: 800px; /* Largeur maximale */
+            width: 100%;
+            padding: 20px;
+            border-radius: 10px; /* Coins arrondis */
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Ombre légère */
+            color: #e8e7ee;
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 3em; /* Taille du titre augmentée (anciennement 2.5em) */
+            white-space: nowrap; /* Empêche le retour à la ligne */
+            overflow: hidden; /* Cache le texte qui dépasse */
+            text-overflow: ellipsis; /* Ajoute "..." si le texte dépasse */
+        }
+        p {
+            line-height: 1.6;
+            font-size: 1.4em; /* Taille du texte augmentée (anciennement 1.2em) */
+            margin-bottom: 20px;
+        }
+        .btn {
+            background-color: #9088b7;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            background-color: #b6b3c6;
+        }
+        .footer {
+            margin-top: auto; /* Place le contenu en bas */
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            color: #e8e7ee;
+        }
+        .footer p {
+            font-size: 1.2em; /* Taille du texte dans le footer (ajustez si nécessaire) */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Violence Detection System</h1> 
+        <br><br> <br> <br> <br><br>
+        <p>
+           Notre système de détection de violence utilise des algorithmes avancés d'analyse des vidéos en temps réel et enregistrées pour identifier les comportements violents dans les flux vidéo des stades. Grâce à l'intelligence artificielle, nous pouvons détecter les mouvements agressifs, les altercations et les situations potentiellement dangereuses, permettant ainsi une intervention rapide des autorités compétentes.
+        </p>
+        <br> <br><br><br><br>
+        <a href="{{ url_for('accueil') }}" class="btn">Accéder au Système</a>  <!-- Lien vers la route 'accueil' -->    </div>
+    <div class="footer">
+        <p>
+            Ce système est conçu pour améliorer la sécurité dans les stades, protéger les spectateurs et assurer un environnement sûr pour tous.
+        </p>
+    </div>
+</body>
+</html>
